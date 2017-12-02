@@ -1,9 +1,11 @@
+fn plus_half(idx: usize, len: usize) -> usize {
+    let half = len / 2;
+    (idx + half) % len
+}
+
 fn get_next(input: &str, cur_idx: usize) -> u64 {
-    let digit = if cur_idx == (input.len() - 1) {
-        &input[0..1]
-    } else {
-        &input[cur_idx+1..cur_idx+2]
-    };
+    let idx = plus_half(cur_idx, input.len());
+    let digit = &input[idx..idx+1];
     let digit = digit.parse().expect(&format!("Could not parse {:?} as a digit", &digit));
     digit
 }
@@ -27,18 +29,19 @@ mod tests {
 
     #[test]
     fn test_get_next() {
-        assert_eq!(get_next("1234", 0), 2);
-        assert_eq!(get_next("1234", 1), 3);
-        assert_eq!(get_next("1234", 2), 4);
-        assert_eq!(get_next("1234", 3), 1);
+        assert_eq!(get_next("1234", 0), 3);
+        assert_eq!(get_next("1234", 1), 4);
+        assert_eq!(get_next("1234", 2), 1);
+        assert_eq!(get_next("1234", 3), 2);
     }
 
     #[test]
     fn it_works() {
-        assert_eq!(calculate_sum("1122"), 3);
-        assert_eq!(calculate_sum("1111"), 4);
-        assert_eq!(calculate_sum("1234"), 0);
-        assert_eq!(calculate_sum("91212129"), 9);
+        assert_eq!(calculate_sum("1212"), 6);
+        assert_eq!(calculate_sum("1221"), 0);
+        assert_eq!(calculate_sum("123425"), 4);
+        assert_eq!(calculate_sum("123123"), 12);
+        assert_eq!(calculate_sum("12131415"), 4);
     }
 
     #[test]
