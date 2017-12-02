@@ -1,3 +1,6 @@
+extern crate itertools;
+
+use itertools::Itertools;
 use std::io::{self, BufRead};
 
 fn prepare_row(row: io::Result<String>) -> Vec<u64> {
@@ -8,10 +11,34 @@ fn prepare_row(row: io::Result<String>) -> Vec<u64> {
         .collect::<Vec<_>>()
 }
 
+fn get_divisible(row: Vec<u64>) -> (u64, u64) {
+    for nums in row.into_iter().combinations(2) {
+        let l = nums[0];
+        let r = nums[1];
+        if l > r {
+            if l % r == 0 {
+                return (l, r);
+            }
+        } else if r > l {
+            if r % l == 0 {
+                return (r, l);
+            }
+        } else { // l == r, l / r == 1
+            return (l, r);
+        }
+    }
+
+    panic!("COULD NOT FIND TWO NUMBERS!");
+}
+
 fn get_min_max(row: Vec<u64>) -> (u64, u64) {
     let min = row.iter().min();
     let max = row.iter().max();
     (*min.expect("Could not get minimum value"), *max.expect("Could not get maximum value"))
+}
+
+fn calculate_div(l_r: (u64, u64)) -> u64 {
+    l_r.0 / l_r.1
 }
 
 fn calculate_diff(min_max: (u64, u64)) -> u64 {
@@ -22,8 +49,8 @@ pub fn calculate_checksum(input: &str) -> u64 {
     io::Cursor::new(input.trim())
             .lines()
             .map(prepare_row)
-            .map(get_min_max)
-            .map(calculate_diff)
+            .map(get_divisible)
+            .map(calculate_div)
             .sum()
 }
 
@@ -34,11 +61,11 @@ mod tests {
     #[test]
     fn it_works() {
         let input = r#"
-        5 1 9 5
-        7 5 3
-        2 4 6 8
+        5 9 2 8
+        9 4 7 3
+        3 8 6 5
         "#;
-        assert_eq!(calculate_checksum(&input), 18)
+        assert_eq!(calculate_checksum(&input), 9)
     }
 
     #[test]

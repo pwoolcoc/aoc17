@@ -4,3 +4,4 @@ version = "0.1.0"
 authors = ["Paul Woolcock <pwoolcock@tenable.com>"]
 
 [dependencies]
+itertools = "0.7"
