@@ -2,6 +2,17 @@ extern crate itertools;
 
 use itertools::Itertools;
 
+fn are_anagrams(one: &str, two: &str) -> bool {
+    if one.len() != two.len() {
+        return false;
+    }
+    let mut one = one.split("").filter(|s| !s.is_empty()).collect::<Vec<_>>();
+    let mut two = two.split("").filter(|s| !s.is_empty()).collect::<Vec<_>>();
+    one.sort();
+    two.sort();
+    one == two
+}
+
 pub fn valid(input: &str) -> bool {
     let input = input.trim();
     if input.is_empty() {
@@ -10,7 +21,7 @@ pub fn valid(input: &str) -> bool {
     for coms in input.split_whitespace().combinations(2) {
         let left = coms[0];
         let right = coms[1];
-        if left == right {
+        if are_anagrams(&left, &right) {
             return false;
         }
     }
@@ -33,10 +44,17 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_are_anagrams() {
+        assert_eq!(are_anagrams("blah", "lbha"), true);
+    }
+
+    #[test]
     fn given_test_cases() {
-        assert_eq!(valid("aa bb cc dd ee"), true);
-        assert_eq!(valid("aa bb cc dd aa"), false);
-        assert_eq!(valid("aa bb cc dd aaa"), true);
+        assert_eq!(valid("abcde fghij"), true);
+        assert_eq!(valid("abcde xyz ecdab"), false);
+        assert_eq!(valid("a ab abc abd abf abj"), true);
+        assert_eq!(valid("iiii oiii ooii oooi oooo"), true);
+        assert_eq!(valid("oiii ioii iioi iiio"), false);
     }
 
     #[test]
