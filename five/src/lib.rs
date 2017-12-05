@@ -26,7 +26,11 @@ impl Tape {
     }
 
     fn incr(&mut self, pos: usize, val: isize) {
-        self.prog[pos] += 1;
+        if val >= 3 {
+            self.prog[pos] -= 1;
+        } else {
+            self.prog[pos] += 1;
+        }
         self.steps += 1;
     }
 
