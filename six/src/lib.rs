@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 fn parse_input(input: &str) -> Vec<u8> {
     let nums = input.split_whitespace()
@@ -10,16 +10,18 @@ fn parse_input(input: &str) -> Vec<u8> {
 
 pub fn run(input: &str) -> usize {
     let mut banks = parse_input(input);
-    let mut count = 0;
-    let mut states: HashSet<Vec<u8>> = HashSet::new();
+    let mut states: HashMap<Vec<u8>, usize> = HashMap::new();
     loop {
-        count += 1;
+        for val in states.values_mut() {
+            *val = *val + 1;
+        }
         println!("{:?}", &banks);
         cycle(&mut banks);
-        if states.contains(&banks) {
-            return count;
+        if states.contains_key(&banks) {
+            println!("states: {:?}", &states);
+            return *states.get(&banks).unwrap()
         }
-        states.insert(banks.clone());
+        states.insert(banks.clone(), 0);
     }
 }
 
@@ -74,6 +76,6 @@ mod tests {
     fn given_test() {
         let input = "0\t2\t7\t0";
         let num = run(&input);
-        assert_eq!(num, 5);
+        assert_eq!(num, 4);
     }
 }
