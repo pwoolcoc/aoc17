@@ -146,12 +146,19 @@ fn find_max(map: &HashMap<String, i64>) -> i64 {
 
 fn run(input: &str) -> i64 {
     let mut registers: HashMap<String, i64> = HashMap::new();
+    let mut max: i64 = 0;
     for line in input.trim().lines() {
         let tokens = tokenize_line(&line);
         let result = eval(&tokens, &mut registers);
+        let local_max = find_max(&registers);
+        max = if  local_max > max {
+            local_max
+        } else {
+            max
+        };
         println!("registers: {:?}", registers);
     }
-    find_max(&registers)
+    max
 }
 
 fn tokenize_line(input: &str) -> Vec<Token> {
@@ -190,7 +197,7 @@ mod tests {
             c dec -10 if a >= 1
             c inc -20 if c == 10
         "#;
-        assert_eq!(run(&input), 1);
+        assert_eq!(run(&input), 10);
     }
 
     #[test]
