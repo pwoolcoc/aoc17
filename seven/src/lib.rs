@@ -56,9 +56,17 @@ fn parse_parent(input: &str) -> Tree {
     }
 }
 
-fn parse_input(input: &str) -> (HashMap<String, Tree>, HashMap<String, Tree>) {
+
+fn combine_trees(parent_names: Vec<String>, mut parents: HashMap<String, Tree>, leaves: HashMap<String, Tree>) -> Tree {
+    for name in parent_names {
+
+    }
+}
+
+fn parse_input(input: &str) -> Tree {
     let mut leaves: HashMap<String, Tree> = HashMap::new();
     let mut parents: HashMap<String, Tree> = HashMap::new();
+    let mut parent_names: Vec<String> = vec![];
     for line in input.lines() {
         let line = line.trim();
         if line.is_empty() {
@@ -66,13 +74,14 @@ fn parse_input(input: &str) -> (HashMap<String, Tree>, HashMap<String, Tree>) {
         }
         if line.contains(" -> ") {
             let tree = parse_parent(&line);
+            parent_names.push(tree.name().into());
             parents.insert(tree.name().into(), tree);
         } else {
             let tree = parse_leaf(&line);
             leaves.insert(tree.name().into(), tree);
         }
     }
-    (leaves, parents)
+    combine_trees(parent_names, parents, leaves)
 }
 
 fn find_root(input: &str) -> Tree {
