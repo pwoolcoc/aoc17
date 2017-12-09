@@ -3,27 +3,20 @@ use std::iter::Peekable;
 
 #[derive(Debug, Clone)]
 enum Class {
-    Garbage,
+    Garbage(i32),
     Group(Vec<Class>),
-}
-
-enum State {
-    Begin,
-    InGroup,
-    InGarbage,
 }
 
 impl Class {
     fn get_score(&self, base: i32) -> i32 {
         match *self {
-            Class::Garbage => 0,
-            Class::Group(ref g) => base + g.iter().map(|g| g.get_score(base + 1)).sum::<i32>(),
+            Class::Garbage(c) => base + c,
+            Class::Group(ref g) => base + g.iter().map(|g| g.get_score(base)).sum::<i32>(),
         }
     }
 }
 
 struct Parser {
-    state: State,
     chars: Vec<char>,
     curr: usize,
 }
@@ -32,7 +25,6 @@ impl Parser {
     fn new(input: &str) -> Parser {
         let input = input.trim();
         Parser {
-            state: State::Begin,
             chars: input.chars().collect(),
             curr: 0,
         }
@@ -81,7 +73,7 @@ impl Parser {
     }
 
     fn parse_garbage(&mut self) -> Result<Class, ()> {
-        self.state = State::InGarbage;
+        let mut count = 0;
         loop {
             let n = self.peek();
             match n {
@@ -95,16 +87,16 @@ impl Parser {
                 },
                 Some(_) => {
                     let _ = self.next();
+                    count += 1;
                 },
                 None => return Err(()),
             }
         }
-        Ok(Class::Garbage)
+        Ok(Class::Garbage(count))
     }
 
     fn parse_group(&mut self) -> Result<Class, ()> {
         let _ = self.expect('{')?;
-        self.state = State::InGroup;
         let mut contents = vec![];
         loop {
             let n = self.peek();
@@ -115,8 +107,8 @@ impl Parser {
                 },
                 Some('{') => contents.push(self.parse_group()?),
                 Some('<') => {
+                    let _ = self.next();
                     contents.push(self.parse_garbage()?);
-                    self.state = State::InGroup;
                 },
                 Some('}') => {
                     let _ = self.next();
@@ -145,7 +137,7 @@ impl Parser {
 
 fn get_score(input: &str) -> i32 {
     let class = Parser::new(input).parse().expect("Parse Error");
-    class.get_score(1)
+    class.get_score(0)
 }
 
 #[cfg(test)]
@@ -154,22 +146,20 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let input = r#" {} "#;
-        assert_eq!(get_score(&input), 1);
-        let input = r#" {{{}}} "#;
-        assert_eq!(get_score(&input), 6);
-        let input = r#" {{},{}} "#;
-        assert_eq!(get_score(&input), 5);
-        let input = r#" {{{},{},{{}}}} "#;
-        assert_eq!(get_score(&input), 16);
-        let input = r#" {<a>,<a>,<a>,<a>} "#;
-        assert_eq!(get_score(&input), 1);
-        let input = r#" {{<ab>},{<ab>},{<ab>},{<ab>}} "#;
-        assert_eq!(get_score(&input), 9);
-        let input = r#" {{<!!>},{<!!>},{<!!>},{<!!>}} "#;
-        assert_eq!(get_score(&input), 9);
-        let input = r#" {{<a!>},{<a!>},{<a!>},{<ab>}} "#;
+        let input = r#"{<>}"#;
+        assert_eq!(get_score(&input), 0);
+        let input = r#"{<random characters>}"#;
+        assert_eq!(get_score(&input), 17);
+        let input = r#"{<<<<>}"#;
         assert_eq!(get_score(&input), 3);
+        let input = r#"{<{!>}>}"#;
+        assert_eq!(get_score(&input), 2);
+        let input = r#"{<!!>}"#;
+        assert_eq!(get_score(&input), 0);
+        let input = r#"{<!!!>>}"#;
+        assert_eq!(get_score(&input), 0);
+        let input = r#"{<{o"i!a,<{i<a>}"#;
+        assert_eq!(get_score(&input), 10);
     }
 
     #[test]
