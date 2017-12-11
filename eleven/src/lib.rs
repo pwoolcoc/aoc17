@@ -53,7 +53,7 @@ fn run(input: &str) -> usize {
     let start = (0, 0);
     let mut max_count = 0;
     let end = input.trim().split(',').fold(start, |acc, dir| {
-        match dir.trim() {
+        let space = match dir.trim() {
             "n" => {
                 (acc.0 + N.0, acc.1 + N.1)
             },
@@ -73,9 +73,14 @@ fn run(input: &str) -> usize {
                 (acc.0 + SE.0, acc.1 + SE.1)
             },
             e => panic!(format!("unexpected input {}", e)),
+        };
+        let interim_count = count(space);
+        if interim_count > max_count {
+            max_count = interim_count;
         }
+        space
     });
-    count(end)
+    max_count
 }
 
 #[cfg(test)]
