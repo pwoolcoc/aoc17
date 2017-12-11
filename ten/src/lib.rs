@@ -51,24 +51,62 @@ impl List {
             for (i, elem) in s.iter().enumerate() {
                 self.list[self.curr + i] = *elem;
             }
-            println!("{:?}", self.list);
             Ok(())
         }
     }
 }
 
-fn run(input: &str, list: &mut List) -> i64 {
-    let lengths = input.trim().split(',')
-        .filter(|s| !s.is_empty())
-        .map(|s| s.parse().expect("NOT A NUMBER"))
+fn get_lengths(input: &str) -> Vec<usize> {
+    let mut lengths = input.chars()
+        .map(|c| c as u32 as usize)
         .collect::<Vec<usize>>();
+    lengths.extend_from_slice(&[17, 31, 73, 47, 23]);
+    lengths
+}
+
+fn run_one(lengths: &[usize], list: &mut List) -> i64 {
     for len in lengths {
-        list.step(len).expect("Couldnt do step");
+        list.step(*len).expect("Couldnt do step");
         list.curr += len + list.skip_size;
         list.curr = list.curr % list.list.len();
         list.skip_size += 1;
     }
     list.list[0] * list.list[1]
+}
+
+fn xor(nums: &[i64]) -> i64 {
+    nums.iter()
+        .fold(0, |acc, x| {
+                acc ^ x
+        })
+}
+
+fn get_dense_hash(list: &List) -> Vec<i64> {
+    (0..16).map(|i| {
+                let start = i * 16;
+                let end = start + 16;
+                xor(&list.list[start..end])
+            })
+            .collect()
+}
+
+fn to_hex(num: i64) -> String {
+    let h = format!("{:x}", num);
+    if h.len() == 1 {
+        format!("0{}", h)
+    } else {
+        h
+    }
+}
+
+fn run(input: &str, list: &mut List) -> String {
+    let lengths = get_lengths(input);
+    for _ in 0..64 {
+        run_one(&lengths, list);
+    }
+    let dense = get_dense_hash(&list);
+    let ashex = dense.iter().map(|d| to_hex(*d)).collect::<Vec<_>>();
+    ashex.join("")
 }
 
 #[cfg(test)]
@@ -94,9 +132,18 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let mut l = List::with_list(vec![0i64, 1, 2, 3, 4]);
-        let input = "3,4,1,5";
-        assert_eq!(run(&input, &mut l), 12);
+        let mut l = List::new();
+        let input = "";
+        assert_eq!(run(&input, &mut l), "a2582a3a0e66e6e86e3812dcb672a272");
+        let mut l = List::new();
+        let input = "AoC 2017";
+        assert_eq!(run(&input, &mut l), "33efeb34ea91902bb2f59c9920caa6cd");
+        let mut l = List::new();
+        let input = "1,2,3";
+        assert_eq!(run(&input, &mut l), "3efbe78a8d82f29979031a4aa0b16a9d");
+        let mut l = List::new();
+        let input = "1,2,4";
+        assert_eq!(run(&input, &mut l), "63960835bcdc130f0b66d7ff4f6a5a8e");
     }
     */
 }
