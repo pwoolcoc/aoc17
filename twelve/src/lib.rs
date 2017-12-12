@@ -1,5 +1,6 @@
 use std::collections::{HashSet, HashMap};
 
+
 #[derive(Debug, Clone)]
 struct Node {
     val: i64,
@@ -21,6 +22,47 @@ impl Node {
     fn get_neighbor<'a>(&self, idx: usize, nodes: &'a Vec<Node>) -> &'a Node {
         let n = self.neighbors[idx];
         &nodes[n]
+    }
+}
+
+#[derive(Debug)]
+struct Groups(Vec<HashSet<i64>>);
+
+impl Groups {
+    fn new() -> Groups {
+        Groups(Vec::new())
+    }
+
+    fn get_with_val_mut(&mut self, val: &i64) -> Option<&mut HashSet<i64>> {
+        let mut idx = None;
+        for (i, set) in self.0.iter().enumerate() {
+            if set.contains(val) {
+                idx = Some(i);
+                break
+            }
+        }
+        if let Some(idx) = idx {
+            self.0.get_mut(idx)
+        } else {
+            None
+        }
+    }
+
+    fn contains(&self, n: &i64) -> bool {
+        for set in self.0.iter() {
+            if set.contains(n) {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn add_group(&mut self, g: HashSet<i64>) {
+        self.0.push(g);
+    }
+
+    fn len(&self) -> usize {
+        self.0.len()
     }
 }
 
@@ -66,7 +108,7 @@ impl Graph {
             };
             self.update_existing_node(idx, neighbors)
         } else {
-            let mut node = Node {
+            let node = Node {
                 val: val,
                 neighbors: vec![],
             };
@@ -78,17 +120,28 @@ impl Graph {
         }
     }
 
-    fn get_neighbors_for_val(&self, val: i64, found: &mut HashSet<i64>) -> Vec<i64> {
+    fn get_or_create_group(&self, val: i64, found: &mut Groups) {
         let startidx = self.index.get(&val).expect("I DONT HAVE THAT VALUE");
         let node = &self.nodes[*startidx];
+        // there exists a group with this value in it already
+        if !found.contains(&node.val) {
+            let mut set = HashSet::new();
+            set.insert(node.val);
+            found.add_group(set);
+        };
         for i in (0..node.neighbors.len()) {
             let n = node.get_neighbor(i, &self.nodes);
-            if !found.contains(&n.val) {
-                found.insert(n.val);
-                self.get_neighbors_for_val(n.val, found);
+            let mut need_traversal = false;
+            if let Some(set) = found.get_with_val_mut(&node.val) {
+                if !set.contains(&n.val) {
+                    set.insert(n.val);
+                    need_traversal = true;
+                }
+            }
+            if need_traversal {
+                self.get_or_create_group(n.val, found);
             }
         }
-        found.iter().cloned().collect()
     }
 
     fn new() -> Graph {
@@ -119,8 +172,11 @@ fn run(input: &str) -> usize {
         let (val, neighbors) = parse_input(line.trim());
         g.add_node(val, &neighbors);
     }
-    let answer = g.get_neighbors_for_val(0, &mut HashSet::new());
-    answer.len()
+    let mut groups = Groups::new();
+    for n in &g.nodes {
+        let answer = g.get_or_create_group(n.val, &mut groups);
+    }
+    groups.len()
 }
 
 #[cfg(test)]
@@ -2145,6 +2201,6 @@ mod tests {
             5 <-> 6
             6 <-> 4, 5
         "#;
-        assert_eq!(run(input), 6);
+        assert_eq!(run(input), 2);
     }
 }
