@@ -91,12 +91,7 @@ fn get_dense_hash(list: &List) -> Vec<i64> {
 }
 
 fn to_hex(num: i64) -> String {
-    let h = format!("{:x}", num);
-    if h.len() == 1 {
-        format!("0{}", h)
-    } else {
-        h
-    }
+    format!("{:02x}", num)
 }
 
 fn run(input: &str, list: &mut List) -> String {
