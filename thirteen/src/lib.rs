@@ -20,7 +20,15 @@ fn run(input: &str) -> u32 {
                            .map(|mut spl| (spl.next().expect("didn't get left side").parse::<u32>().expect("Couldn't parse left side"),
                                            spl.next().expect("didn't get right side").parse::<u32>().expect("Couldn't parse right side")))
                            .collect::<Vec<_>>();
-    layer_input.iter().filter(|p| is_zero(0, p)).map(|p| p.0 * p.1).sum()
+    let mut i = 0;
+    loop {
+        println!("with delay: {}", i);
+        let num = layer_input.iter().filter(|p| is_zero(i, p)).count();
+        if num == 0 {
+            break i;
+        }
+        i += 1;
+    }
 }
 
 #[cfg(test)]
@@ -34,10 +42,9 @@ mod tests {
             4: 4
             6: 4
         "#;
-        assert_eq!(run(&input), 24);
+        assert_eq!(run(&input), 10);
     }
 
-    /*
     #[test]
     fn test_answer() {
         let input = r#"
@@ -88,5 +95,4 @@ mod tests {
         "#;
         println!("{}", run(&input));
     }
-    */
 }
