@@ -1,179 +1,243 @@
 #![allow(dead_code)]
 
-#[derive(Debug)]
-struct List {
-    curr: usize,
-    skip_size: usize,
-    list: Vec<i64>,
+use std::cell::RefCell;
+use std::fmt;
+use std::convert::From;
+use std::ops::Index;
+
+use knothash::KnotHash;
+
+mod knothash;
+
+struct GridCell {
+    value: bool,
+    group: RefCell<Option<usize>>,
 }
 
-impl List {
-    fn new() -> List {
-        List::with_list((0..256).collect::<Vec<_>>())
+impl fmt::Debug for GridCell {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let g = self.group();
+        write!(f, "{:04}", if g == -1 { "_".to_string() } else { g.to_string() })
     }
+}
 
-    fn with_list<S: Into<Vec<i64>>>(s: S) -> List {
-        List {
-            curr: 0,
-            skip_size: 0,
-            list: s.into(),
+impl fmt::Display for GridCell {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(self, f)
+    }
+}
+
+impl From<char> for GridCell {
+    fn from(c: char) -> GridCell {
+        if c == '1' {
+            GridCell {
+                value: true,
+                group: RefCell::new(None),
+            }
+        } else if c == '0' {
+            GridCell {
+                value: false,
+                group: RefCell::new(None),
+            }
+        } else {
+            panic!("WHAT IS THIS");
         }
     }
+}
 
-    fn step_wrap(&mut self, len: usize) -> Result<(), ()> {
-        let right_list = self.list[self.curr..].to_vec();
-        let pivot = right_list.len();
-        let left_len = len - pivot;
-        let left_list = self.list[0..left_len].to_vec();
-        let mut v = right_list.to_vec();
-        v.extend_from_slice(&left_list);
-        v.reverse();
-        let (left, right) = v.split_at(pivot);
-        for (i, elem) in left.iter().enumerate() {
-            self.list[self.curr + i] = *elem;
+impl GridCell {
+    fn is_set(&self) -> bool {
+        self.value
+    }
+
+    fn has_group(&self) -> bool {
+        self.group.borrow().is_some()
+    }
+
+    fn set_group(&self, group: usize) {
+        *self.group.borrow_mut() = Some(group);
+    }
+
+    fn group(&self) -> isize {
+        match *self.group.borrow() {
+            Some(g) => g as isize,
+            None => -1isize,
         }
-        for (i, elem) in right.iter().enumerate() {
-            self.list[i] = *elem;
+    }
+}
+
+struct BinGrid {
+    data: Vec<GridCell>,
+    width: usize,
+    height: usize,
+}
+
+impl fmt::Debug for BinGrid {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let num_rows = self.rows();
+        for i in 0..num_rows {
+            let start = i * self.width;
+            let end = start + self.width;
+            let row = self.data[start..end].iter().fold(String::new(), |accum, s| format!("{} {}", accum, s));
+            writeln!(f, "{}", row)?;
         }
         Ok(())
     }
+}
 
-    fn step(&mut self, len: usize) -> Result<(), ()> {
-        if len == 0 || len == 1 {
-            return Ok(());
-        }
+impl Index<(usize, usize)> for BinGrid {
+    type Output = GridCell;
 
-        if len + self.curr > self.list.len() {
-            Ok(self.step_wrap(len)?)
-        } else {
-            let mut s = self.list[self.curr..(self.curr + len)].to_vec();
-            s.reverse();
-            for (i, elem) in s.iter().enumerate() {
-                self.list[self.curr + i] = *elem;
+    fn index(&self, index: (usize, usize)) -> &Self::Output {
+        self.get(index.0, index.1)
+    }
+}
+
+impl<'a> From<&'a str> for BinGrid {
+    fn from(input: &'a str) -> BinGrid {
+        let mut accum = vec![];
+        for i in 0..128 {
+            let inp = format!("{}-{}", input, i);
+            let hash = KnotHash::from(&inp[..]);
+            for cell in hash.to_bin_str().chars().map(|c| GridCell::from(c)) {
+                accum.push(cell);
             }
-            Ok(())
+        }
+        BinGrid {
+            data: accum,
+            width: 128,
+            height: 128,
         }
     }
 }
 
-fn get_lengths(input: &str) -> Vec<usize> {
-    let mut lengths = input.chars()
-        .map(|c| c as u32 as usize)
-        .collect::<Vec<usize>>();
-    lengths.extend_from_slice(&[17, 31, 73, 47, 23]);
-    lengths
-}
-
-fn run_one(lengths: &[usize], list: &mut List) -> i64 {
-    for len in lengths {
-        list.step(*len).expect("Couldnt do step");
-        list.curr += len + list.skip_size;
-        list.curr = list.curr % list.list.len();
-        list.skip_size += 1;
+impl BinGrid {
+    fn rows(&self) -> usize {
+        (self.data.len() / self.width) as usize
     }
-    list.list[0] * list.list[1]
-}
 
-fn xor(nums: &[i64]) -> i64 {
-    nums.iter()
-        .fold(0, |acc, x| {
-                acc ^ x
-        })
-}
-
-fn get_dense_hash(list: &List) -> Vec<i64> {
-    (0..16).map(|i| {
-                let start = i * 16;
-                let end = start + 16;
-                xor(&list.list[start..end])
-            })
-            .collect()
-}
-
-fn to_hex(num: i64) -> String {
-    format!("{:02x}", num)
-}
-
-fn get_hash_string(input: &str, list: &mut List) -> String {
-    let lengths = get_lengths(input);
-    for _ in 0..64 {
-        run_one(&lengths, list);
+    fn cols(&self) -> usize {
+        self.width
     }
-    let dense = get_dense_hash(&list);
-    let ashex = dense.iter().map(|d| to_hex(*d)).collect::<Vec<_>>();
-    ashex.join("")
-}
 
-fn hex_to_bin(hex: &str) -> String {
-    let mut accum = String::new();
-    for i in 0..hex.len() {
-        let j = i + 1;
-        let num: u64 = u64::from_str_radix(&hex[i..j], 16).expect("Couldn't get a number from hex string");
-        accum = format!("{}{:04b}", accum, num);
+    fn cells(&self) -> usize {
+        self.data.len()
     }
-    accum
+
+    // starts with 0, 0 in the top-left corner
+    fn coords_to_num(&self, x: usize, y: usize) -> usize {
+        // y is the row we're in
+        let row_start = y * self.width;
+        row_start + x
+    }
+
+    fn is_left_edge(&self, x: usize, _: usize) -> bool {
+        x == 0
+    }
+
+    fn is_right_edge(&self, x: usize, _: usize) -> bool {
+        x == (self.width - 1)
+    }
+
+    fn is_top_edge(&self, _: usize, y: usize) -> bool {
+        y == 0
+    }
+
+    fn is_bottom_edge(&self, _: usize, y: usize) -> bool {
+        y == (self.height - 1)
+    }
+
+    fn left(&self, x: usize, y: usize) -> Option<(usize, usize)> {
+        if self.is_left_edge(x, y) {
+            None
+        } else {
+            Some((x - 1, y))
+        }
+    }
+
+    fn right(&self, x: usize, y: usize) -> Option<(usize, usize)> {
+        if self.is_right_edge(x, y) {
+            None
+        } else {
+            Some((x + 1, y))
+        }
+    }
+
+    fn top(&self, x: usize, y: usize) -> Option<(usize, usize)> {
+        if self.is_top_edge(x, y) {
+            None
+        } else {
+            Some((x, y - 1))
+        }
+    }
+
+    fn bottom(&self, x: usize, y: usize) -> Option<(usize, usize)> {
+        if self.is_bottom_edge(x, y) {
+            None
+        } else {
+            Some((x, y + 1))
+        }
+    }
+
+    fn get(&self, x: usize, y: usize) -> &GridCell {
+        let idx = self.coords_to_num(x, y);
+        &self.data[idx]
+    }
+
+    fn get_mut(&mut self, x: usize, y: usize) -> &mut GridCell {
+        let idx = self.coords_to_num(x, y);
+        &mut self.data[idx]
+    }
+
+    fn mark_group(&self, x: usize, y: usize, group: usize) -> bool {
+        let cell = self.get(x, y);
+        if !cell.is_set() {
+            return false;
+        }
+        if cell.has_group() {
+            println!("cell({}, {}) already set to {}", x, y, cell.group());
+            return false;
+        }
+        {
+            println!("setting cell({}, {}) to {}", x, y, group);
+            cell.set_group(group);
+        }
+        if let Some(coords) = self.left(x, y) {
+            self.mark_group(coords.0, coords.1, group);
+        }
+        if let Some(coords) = self.right(x, y) {
+            self.mark_group(coords.0, coords.1, group);
+        }
+        if let Some(coords) = self.top(x, y) {
+            self.mark_group(coords.0, coords.1, group);
+        }
+        if let Some(coords) = self.bottom(x, y) {
+            self.mark_group(coords.0, coords.1, group);
+        }
+        true
+    }
 }
 
 fn run(input: &str) -> usize {
-    let mut count = 0;
-    for i in 0..128 {
-        let mut l = List::new();
-        let inp = format!("{}-{}", input, i);
-        println!("input is {}", &inp);
-        let hash = get_hash_string(&inp, &mut l);
-        println!("hash is {}", &hash);
-        let bin = hex_to_bin(&hash);
-        println!("bin is {}", &bin);
-        let c = bin.chars().filter(|c| *c == '1').count();
-        println!("adding {} 1's to the count", &c);
-        count += c;
+    let mut group = 0;
+    let grid = BinGrid::from(input);
+    for y in 0..grid.rows() {
+        for x in 0..grid.cols() {
+            if grid.mark_group(x, y, group) {
+                group += 1;
+            }
+        }
     }
-    count
+    group
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /*
-    #[test]
-    fn test_hex_to_bin() {
-        assert_eq!(hex_to_bin("f"), "1111".to_string());
-        assert_eq!(hex_to_bin("ff"), "11111111".to_string());
-        assert_eq!(hex_to_bin("f0"), "11110000".to_string());
-    }
-    */
-
     #[test]
     fn test_input() {
         let input = "nbysizxe";
         println!("answer is {}", run(input));
     }
-
-    /*
-    #[test]
-    fn test_step_wrap() {
-        let mut l = List::new();
-        l.curr = 250;
-        l.step(10);
-        assert_eq!(&l.list[0..5], &[253, 252, 251, 250, 4]);
-        assert_eq!(&l.list[250..], &[3, 2, 1, 0, 255, 254]);
-    }
-
-    #[test]
-    fn it_works() {
-        let mut l = List::new();
-        let input = "";
-        assert_eq!(run(&input, &mut l), "a2582a3a0e66e6e86e3812dcb672a272");
-        let mut l = List::new();
-        let input = "AoC 2017";
-        assert_eq!(run(&input, &mut l), "33efeb34ea91902bb2f59c9920caa6cd");
-        let mut l = List::new();
-        let input = "1,2,3";
-        assert_eq!(run(&input, &mut l), "3efbe78a8d82f29979031a4aa0b16a9d");
-        let mut l = List::new();
-        let input = "1,2,4";
-        assert_eq!(run(&input, &mut l), "63960835bcdc130f0b66d7ff4f6a5a8e");
-    }
-    */
 }
