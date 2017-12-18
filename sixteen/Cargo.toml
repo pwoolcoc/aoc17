@@ -1,0 +1,11 @@
+[package]
+authors = ["Paul Woolcock <pwoolcock@tenable.com>"]
+name = "sixteen"
+version = "0.1.0"
+[[bin]]
+name = "sixteen"
+path = "src/lib.rs"
+
+[dependencies]
+cached = "0.4.2"
+lazy_static = "1.0.0"
